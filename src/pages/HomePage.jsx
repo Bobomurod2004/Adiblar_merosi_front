@@ -16,19 +16,6 @@ const fallbackWriters = [
   { full_name: 'Muqimiy', years_display: '(1850-1903)' },
 ]
 
-const fallbackScholarships = [
-  {
-    name: 'Muqimiy stipendiyasi',
-    slug: 'muqimiy-stipendiyasi',
-    text: 'O‘zbekiston Respublikasi Prezidenti stipendiyasi. Yosh iqtidorli talabalar uchun.',
-  },
-  {
-    name: 'Abdulla Qahhor stipendiyasi',
-    slug: 'abdulla-qahhor-stipendiyasi',
-    text: 'Yosh ijodkor talabalar uchun alohida o‘rnatilgan stipendiya.',
-  },
-]
-
 const fallbackTests = [
   {
     id: 'qahhor',
@@ -112,11 +99,21 @@ function pickWriterYears(writer) {
   return 'Noma’lum'
 }
 
+function normalizeScholarship(item) {
+  return {
+    name: item?.name || 'Noma’lum stipendiya',
+    slug: item?.slug || '',
+    text: item?.description || 'Tavsif mavjud emas.',
+  }
+}
+
 function HomePage() {
   const [writers, setWriters] = useState(fallbackWriters)
   const [articles, setArticles] = useState([])
   const [tests, setTests] = useState(fallbackTests)
-  const [scholarships, setScholarships] = useState(fallbackScholarships)
+  const [scholarships, setScholarships] = useState([])
+  const [scholarshipsLoading, setScholarshipsLoading] = useState(true)
+  const [scholarshipsError, setScholarshipsError] = useState('')
   const [articlesLoading, setArticlesLoading] = useState(true)
   const [articlesError, setArticlesError] = useState('')
 
@@ -177,18 +174,18 @@ function HomePage() {
 
       if (scholarshipsResult.status === 'fulfilled') {
         const scholarshipsData = scholarshipsResult.value?.results || scholarshipsResult.value || []
-        if (scholarshipsData.length) {
-          setScholarships(
-            scholarshipsData.slice(0, 2).map((item) => ({
-              name: item.name,
-              slug: item.slug,
-              text: item.description,
-            })),
-          )
-        }
+        setScholarships(
+          Array.isArray(scholarshipsData)
+            ? scholarshipsData.slice(0, 2).map(normalizeScholarship)
+            : [],
+        )
+        setScholarshipsError('')
       } else {
         console.error('Scholarships data yuklanmadi:', scholarshipsResult.reason)
+        setScholarships([])
+        setScholarshipsError('Stipendiya ma’lumotini yuklab bo‘lmadi.')
       }
+      setScholarshipsLoading(false)
     }
 
     loadData()
@@ -298,20 +295,29 @@ function HomePage() {
 
         <aside className="scholarship-panel">
           <h3>Stipendiya haqida</h3>
-          {scholarships.map((item, index) => (
-            <article key={item.slug || item.name} className="scholarship-item">
-              <div className="scholarship-item-icon" aria-hidden="true">
-                {index === 0 ? '❂' : '✶'}
-              </div>
-              <div>
-                <h4>{item.name}</h4>
-                <p>{item.text}</p>
-              </div>
-              <Link to="/scholarships" className="tiny-btn">
-                Batafsil
-              </Link>
-            </article>
-          ))}
+          {scholarshipsLoading ? <p className="muted-text">Yuklanmoqda...</p> : null}
+          {!scholarshipsLoading && scholarshipsError ? (
+            <p className="form-error">{scholarshipsError}</p>
+          ) : null}
+          {!scholarshipsLoading && !scholarshipsError && scholarships.length === 0 ? (
+            <p className="muted-text">Hozircha faol stipendiya mavjud emas.</p>
+          ) : null}
+          {!scholarshipsLoading && !scholarshipsError
+            ? scholarships.map((item, index) => (
+              <article key={item.slug || item.name} className="scholarship-item">
+                <div className="scholarship-item-icon" aria-hidden="true">
+                  {index === 0 ? '❂' : '✶'}
+                </div>
+                <div>
+                  <h4>{item.name}</h4>
+                  <p>{item.text}</p>
+                </div>
+                <Link to="/scholarships" className="tiny-btn">
+                  Batafsil
+                </Link>
+              </article>
+            ))
+            : null}
         </aside>
       </section>
 

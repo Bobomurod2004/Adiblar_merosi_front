@@ -1,37 +1,37 @@
 import { useEffect, useState } from 'react'
 import { fetchScholarships } from '../services/api'
 
-const fallbackScholarships = [
-  {
-    id: 'muqimiy',
-    slug: 'muqimiy-stipendiyasi',
-    name: 'Muqimiy stipendiyasi',
-    amount: 'Oyiga 2 500 000 so‘m',
-    details:
-      'Adabiyot yo‘nalishida yuqori natija ko‘rsatgan bakalavr talabalari uchun mo‘ljallangan.',
-    requirements: [
-      'Kamida 3.5 GPA yoki tenglashtirilgan yuqori o‘zlashtirish',
-      'Adabiyot bo‘yicha ilmiy maqola yoki loyiha',
-      'Tavsiyanoma va motivatsion xat',
-    ],
-  },
-  {
-    id: 'qahhor',
-    slug: 'abdulla-qahhor-stipendiyasi',
-    name: 'Abdulla Qahhor stipendiyasi',
-    amount: 'Oyiga 3 000 000 so‘m',
-    details:
-      'Yosh ijodkorlar va ilmiy izlanish olib borayotgan magistratura talabalari uchun maxsus grant.',
-    requirements: [
-      'Yaratilgan ijodiy ishlar portfeli',
-      'Adabiy tanqid yoki tahliliy maqola tajribasi',
-      'Suhbat bosqichidan muvaffaqiyatli o‘tish',
-    ],
-  },
-]
+function formatAmount(value) {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return ''
+
+  return `${new Intl.NumberFormat('uz-UZ').format(numberValue)} so‘m`
+}
+
+function normalizeRequirements(value) {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (typeof value === 'string') {
+    return value
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function normalizeScholarship(item) {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    amount: formatAmount(item.monthly_amount),
+    details: item.description || '',
+    requirements: normalizeRequirements(item.requirements),
+  }
+}
 
 function StipendiyaPage() {
-  const [scholarships, setScholarships] = useState(fallbackScholarships)
+  const [scholarships, setScholarships] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -44,9 +44,7 @@ function StipendiyaPage() {
         if (!active) return
 
         const items = data?.results || data || []
-        if (items.length) {
-          setScholarships(items)
-        }
+        setScholarships(Array.isArray(items) ? items.map(normalizeScholarship) : [])
       } catch {
         if (!active) return
         setError('Stipendiya ma’lumotlarini yuklab bo‘lmadi.')
@@ -67,13 +65,16 @@ function StipendiyaPage() {
         <span className="page-kicker">Grantlar</span>
         <h2>Stipendiya dasturlari</h2>
         <p>
-          Muqimiy va Abdulla Qahhor yo‘nalishidagi stipendiyalar uchun
-          talablar, muddatlar va baholash mezonlari.
+          Platformadagi faol stipendiya dasturlari, talablar va baholash
+          mezonlari bilan tanishing.
         </p>
       </header>
 
       {loading ? <p className="muted-text">Yuklanmoqda...</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
+      {!loading && !error && scholarships.length === 0 ? (
+        <p className="muted-text">Hozircha faol stipendiya dasturi mavjud emas.</p>
+      ) : null}
 
       <div className="scholarship-grid-page">
         {scholarships.map((item) => (
